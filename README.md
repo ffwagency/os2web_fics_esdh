@@ -25,6 +25,6 @@ Additional Info
 This repository should be governed using Git Flow. for more information see
 http://nvie.com/posts/a-successful-git-branching-model/
 
-Note: This module can workout with OS2Web core if the OS2Web Meetings Light
+Note: This module can work without OS2Web core if the OS2Web Meetings Light
 (https://github.com/PropeopleDK/os2web_meetings_light) feature is used 
 instead.
