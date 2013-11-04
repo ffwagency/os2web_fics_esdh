@@ -1,0 +1,13 @@
+name = OS2Web FICS ESDH System
+description = OS2Web FICS backend for ESDH system.
+core = 7.x
+package = OS2Web - ESDH
+version = 7.x-1.0-dev
+project = os2web_fics_esdh
+dependencies[] = ctools
+dependencies[] = features
+dependencies[] = filter
+dependencies[] = os2web_esdh_provider
+features[features_api][] = api:2
+features[filter][] = os2web_fics_esdh
+files[] = plugins/mm/os2web_fics_esdh_mm.inc

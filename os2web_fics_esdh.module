@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * @file
+ * This module implements FICS ESDH backend for use in os2web
+ */
+
+include_once('os2web_fics_esdh.features.inc');
+
+define('MM_IMPORT_DIR', 'public://fics');
+define('MM_DEFAULT_APPROVED', '');
+define('MM_DEFAULT_CLOSED_BULLET_HANDLING', 'partly_import');
+define('MM_CLOSED_STRING', 'Lukket');
+define('MM_OPEN_STRING', 'Åben');
+define('MM_BPA_BODY_FORMAT', 'os2web_fics_esdh');
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ *
+ * Register as provider of ESDH plugins
+ */
+function os2web_fics_esdh_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'os2web_esdh_provider') {
+    return "plugins/$plugin";
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Add configuration to the settings form.
+ */
+function os2web_fics_esdh_form_os2web_settings_settings_form_alter(&$form, &$form_state) {
+  // MM configuration.
+  $form['meetings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Minutes import'),
+    '#description' => t('Settings for the import of meeting agendas and minutes.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['meetings']['os2web_fics_esdh_mm_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path to FICS publish folder'),
+    '#description' => t('The path where FICS publish the XML-files to.'),
+    '#default_value' => variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR),
+  );
+  $form['meetings']['os2web_fics_esdh_approved_committees'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Approved committees'),
+    '#maxlength' => 200,
+    '#description' => t("Comma separated list of commitee ID's approved for publishing"),
+    '#default_value' => variable_get('os2web_fics_esdh_approved_committees', MM_DEFAULT_APPROVED),
+  );
+}
