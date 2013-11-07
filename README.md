@@ -6,12 +6,12 @@ Description
 This module provides an implementation of the FICS ESDH system.
 
 Dependencies
------------
+------------
 - os2web_esdh_provider
 - ctools
 
 Installation
------------
+------------
 This module should reside in the modules directory of the installation,
 most commonly profiles/os2web/modules/, but alternativly in sites/all/modules
 (This could be for development purposes).
@@ -19,6 +19,13 @@ most commonly profiles/os2web/modules/, but alternativly in sites/all/modules
 See https://github.com/OS2web/os2web/wiki for further instructions.
 
 This module can also be installed with drush make in your install profile.
+
+Developer info
+--------------
+Automatic cleanup of imported XML files can be disabled by adding
+"$conf['os2web_fics_esdh_keep_xml_files'] = TRUE"; to the settings.php file.
+Notice: this line should be removed or set to FALSE in production environments,
+if XML files contain closed bullets!
 
 Additional Info
 ---------------
