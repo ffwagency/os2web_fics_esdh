@@ -14,6 +14,17 @@ define('MM_CLOSED_STRING', 'Lukket');
 define('MM_OPEN_STRING', 'Åben');
 define('MM_BPA_BODY_FORMAT', 'os2web_fics_esdh');
 
+// This constant / variable should only be set to true in development
+// environments! XML files can contain information that should not be
+// shared public and should be deleted.
+define('MM_KEEP_XML_FILES', variable_get('os2web_fics_esdh_keep_xml_files', FALSE));
+
+
+// Setting this constant / variable to false will keep enclosure files
+// on the server for closed bullets. Notice these enclosures should not
+// be shared public!
+define('MM_DELETE_FILES_FOR_CLOSED', variable_get('os2web_fics_esdh_delete_files_for_closed', TRUE));
+
 /**
  * Implements hook_ctools_plugin_directory().
  *

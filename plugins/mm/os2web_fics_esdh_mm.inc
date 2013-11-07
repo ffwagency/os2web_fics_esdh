@@ -36,6 +36,9 @@ function os2web_fics_esdh_mm_get_import_list() {
    */
   _os2web_fics_esdh_mm_ensure_htaccess();
 
+  // Clearing variable with processed XML files
+  variable_set('os2web_fics_esdh_mm_processed_xml_files', array());
+
   /*
    * For the FICS service, we need to import meetings from XML files.
    * We will enumerate the list with the publication-id
@@ -146,6 +149,10 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
       // Error logging to watchdog if the XML failde to parse. Check if all illegal characters are in the remove list. 
       watchdog('FICS MM', 'Failed to parse XML in %file during import.', array('%file' => $file), WATCHDOG_WARNING);
     }
+
+    $processed_files = variable_get('os2web_fics_esdh_mm_processed_xml_files', array());
+    $processed_files[] = $file;
+    variable_set('os2web_fics_esdh_mm_processed_xml_files', $processed_files);
   }
   return $meetings;
 }
@@ -215,17 +222,29 @@ function _os2web_fics_esdh_mm_import_meeting_agenda_item($meeting, $xml) {
     foreach ($xml->CaseAttachments->Attachment as $attachment) {
       $attachment_item['filename'] = (string) $attachment->AttachmentFilename;
       $attachment_item['access'] = ((string) $attachment->AttachmentClosed == 'false') ? MM_OPEN_STRING : MM_CLOSED_STRING;
-      if (strlen($attachment_item['filename']) > 0 && $attachment_item['access'] == MM_OPEN_STRING) {
-        $item['enclosures'][] = array(
-          'uri' => implode('/', array(
-            variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR),
-            $meeting['meeting_id'],
-            str_replace('\\', '/', $attachment_item['filename'])
-          )),
-          'title' => trim((string) $attachment->AttachmentTitle),
-          'access' => TRUE,
-        );
+      $file_uri_parts = array(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']));
+      $file_uri = implode('/', $file_uri_parts);
+      if (strlen($attachment_item['filename']) > 0 && file_exists($file_uri)) {
+        if ($attachment_item['access'] == MM_OPEN_STRING) {
+          $item['enclosures'][] = array(
+            'uri' => $file_uri,
+            'title' => trim((string) $attachment->AttachmentTitle),
+            'access' => TRUE,
+          );
+        }
+        else {
+          _os2web_fics_esdh_mm_delete_attachments($file_uri, $meeting['meeting_id'] . '/' . $item['id']);
+        }
       }
+    }
+  }
+  else if (MM_DELETE_FILES_FOR_CLOSED) {
+    // Delete the attachments
+    foreach ($xml->CaseAttachments->Attachment as $attachment) {
+      $attachment_item['filename'] = (string) $attachment->AttachmentFilename;
+      $file_uri_parts = array(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']));
+      $file_uri = implode('/', $file_uri_parts);
+      _os2web_fics_esdh_mm_delete_attachments($file_uri, $meeting['meeting_id'] . '/' . $item['id']);
     }
   }
 
@@ -249,11 +268,53 @@ function _os2web_fics_esdh_mm_extract_case_content($content) {
 }
 
 /**
- * Function not used!
+ * Post import process callback.
+ *
+ * In the FICS MM plugin is it used to delete imported XML files,
+ * because these can contain closed bullets.
  */
 function _os2web_fics_esdh_mm_post_import_process($drush = FALSE) {
+  if (!MM_KEEP_XML_FILES) {
+    $processed_files = variable_get('os2web_fics_esdh_mm_processed_xml_files', array());
+    if (is_array($processed_files) && count($processed_files) > 0) {
+      foreach ($processed_files as $file) {
+        $variables = array('%file' => $file);
+        if (file_unmanaged_delete($file)) {
+          watchdog('FICS MM', 'Successfully deleted XML %file after import.', $variables, WATCHDOG_INFO);
+        }
+        else {
+          watchdog('FICS MM', 'Failed to delete XML %file after import.', $variables, WATCHDOG_ERROR);
+        }
+      }
+    }
+    variable_set('os2web_fics_esdh_mm_processed_xml_files', array());
+  }
 }
 
+/**
+ *
+ * Deleting the specified file from the file system and logging the
+ * result in watchdog.
+ *
+ * @param string $file
+ *   Path to the file that should be deleted.
+ *
+ * @param string $meeting
+ *   A string with meeting id and item id identifying the item we
+ *   are deleting the file for. Only used for logging in the watchdog.
+ */
+function _os2web_fics_esdh_mm_delete_attachments($file, $meeting) {
+  $variables = array('%file' => $file, '%meeting' => $meeting);
+
+  if (file_exists($file)) {
+    if (file_unmanaged_delete($file)) {
+      watchdog('FICS MM', 'Deleted attachment %file during import with success. Meeting/item identification: %meeting.', $variables, WATCHDOG_INFO);
+    }
+    else {
+      watchdog('FICS MM', 'Failed to delete attachment %file during import. Meeting/item identification: %meeting.', $variables, WATCHDOG_ERROR);
+    }
+  }
+}
 
 /**
  * Creates a .htaccess file in the FICS files folder which restricts
