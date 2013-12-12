@@ -6,8 +6,10 @@
  */
 
 include_once('os2web_fics_esdh.features.inc');
+include_once('os2web_fics_esdh.settings.inc');
 
-define('MM_IMPORT_DIR', 'public://fics');
+// Default MM settings
+define('MM_IMPORT_DIR', 'public://fics/DAG');
 define('MM_DEFAULT_APPROVED', '');
 define('MM_DEFAULT_CLOSED_BULLET_HANDLING', 'partly_import');
 define('MM_CLOSED_STRING', 'Lukket');
@@ -25,6 +27,16 @@ define('MM_KEEP_XML_FILES', variable_get('os2web_fics_esdh_keep_xml_files', FALS
 // be shared public!
 define('MM_DELETE_FILES_FOR_CLOSED', variable_get('os2web_fics_esdh_delete_files_for_closed', TRUE));
 
+// Default CP import dir.
+define('CP_IMPORT_DIR', 'public://fics/PUBL');
+
+// Default CP destination dir.
+define('CP_DESTINATION_DIR', 'public://fics/publ_imported');
+
+// This constant / variable should only be set to true in development
+// environments!
+define('CP_KEEP_XML_FILES', variable_get('os2web_fics_esdh_cp_keep_xml_files', FALSE));
+
 /**
  * Implements hook_ctools_plugin_directory().
  *
@@ -37,30 +49,101 @@ function os2web_fics_esdh_ctools_plugin_directory($module, $plugin) {
 }
 
 /**
- * Implements hook_form_alter().
- *
- * Add configuration to the settings form.
+ * Implements hook_menu().
  */
-function os2web_fics_esdh_form_os2web_settings_settings_form_alter(&$form, &$form_state) {
-  // MM configuration.
-  $form['meetings'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Minutes import'),
-    '#description' => t('Settings for the import of meeting agendas and minutes.'),
-    '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
+function os2web_fics_esdh_menu() {
+  $items['admin/config/os2web/fics_esdh_cp/import-confirm'] = array(
+    'title' => 'Confirm re-import',
+    'access arguments' => array('administer os2web'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('_os2web_fics_esdh_cp_import_confirm'),
+    'type' => MENU_CALLBACK,
+    'file' => 'os2web_fics_esdh.admin.inc',
   );
-  $form['meetings']['os2web_fics_esdh_mm_path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Path to FICS publish folder'),
-    '#description' => t('The path where FICS publish the XML-files to.'),
-    '#default_value' => variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR),
+  $items['admin/config/os2web/fics_esdh_cp'] = array(
+    'title' => 'FICS CP import',
+    'access arguments' => array('administer os2web'),
+    'page callback' => '_os2web_fics_esdh_cp_import',
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'os2web_fics_esdh.admin.inc',
   );
-  $form['meetings']['os2web_fics_esdh_approved_committees'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Approved committees'),
-    '#maxlength' => 200,
-    '#description' => t("Comma separated list of commitee ID's approved for publishing"),
-    '#default_value' => variable_get('os2web_fics_esdh_approved_committees', MM_DEFAULT_APPROVED),
+  return $items;
+}
+
+/**
+ * Checking if the os2web_case_publishing feature is enabled.
+ *
+ * @return bool
+ */
+function os2web_fics_esdh_cp_enabled() {
+  return module_exists('os2web_case_publishing');
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function os2web_fics_esdh_node_delete($node) {
+  if ($node->type == 'os2web_case_publishing_case') {
+    // Delete documents from case.
+    $items = array_shift($node->field_os2web_case_documents);
+    if (is_array($items)) {
+      foreach ($items as $nids) {
+        node_delete($nids['target_id']);
+      }
+    }
+  }
+  else if ($node->type == 'os2web_case_publishing_document') {
+    if (!empty($node->field_os2web_case_document_file[LANGUAGE_NONE][0]['fid'])) {
+      $file = file_load($node->field_os2web_case_document_file[LANGUAGE_NONE][0]['fid']);
+      if (is_object($file)) {
+        file_delete($file, TRUE);
+      }
+    }
+  }
+}
+
+/**
+ * Implemets hook_cron().
+ */
+function os2web_fics_esdh_cron() {
+  module_load_include('inc', 'os2web_fics_esdh', 'os2web_fics_esdh.cp');
+
+  $queue = DrupalQueue::get('os2web_fics_esdh_cp_import');
+  if ($queue->numberOfItems() == 0) {
+    $current_timestamp = time();
+    $last_import_time = variable_get('os2web_fics_esdh_cp_last_import', 0);
+    $documents = os2web_fics_esdh_cp_read_dir();
+    foreach ($documents as $document) {
+      // Only import files newer than last cron job.
+      if (!$last_import_time || filemtime($document) > $last_import_time) {
+        $queue->createItem(array('document' => $document));
+      }
+    }
+    $queue->createItem(array('post_import_process' => TRUE));
+    variable_set('os2web_fics_esdh_cp_last_import', $current_timestamp);
+  }
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function os2web_fics_esdh_cron_queue_info() {
+  $queues['os2web_fics_esdh_cp_import'] = array(
+    'worker callback' => '_os2web_fics_esdh_cron_queue_worker',
+    'time' => 30,
   );
+  return $queues;
+}
+
+/**
+ * Worker function for a single import.
+ *
+ * @param array $args
+ *   Document data for the import.
+ */
+function _os2web_fics_esdh_cron_queue_worker($args) {
+  if (isset($args['document'])) {
+    module_load_include('inc', 'os2web_fics_esdh', 'os2web_fics_esdh.cp');
+    _os2web_esdh_fics_cp_import_document($args['document']);
+  }
 }

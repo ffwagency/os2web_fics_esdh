@@ -3,7 +3,10 @@ OS2Web FICS ESDH Provider
 
 Description
 -----------
-This module provides an implementation of the FICS ESDH system.
+This module provides an implementation of the FICS ESDH system. It comes
+with a MM plugin for the os2web_esdh_provider module, and a custom case
+publishing import importing into the content types from 
+os2web_case_publishing. 
 
 Dependencies
 ------------
