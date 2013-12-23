@@ -122,8 +122,11 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
         'system_id' => $meeting_id,
         'meeting_id' => $meeting_id,
         'meeting_sub_id' => $meeting_id,
-        'committee' => $committee_name,
-        'committee_id' => $committee_id,
+        'committee' => array(
+          'esdh_name' => $committee_name,
+          'esdh_id' => $committee_id,
+          'esdh_id_field' => 'field_os2web_meetings_commiteeid'
+        ),
         'location' => $meeting_place,
         'title' => $committee_name . ': ' . $title_date,
         'meeting_date_start' => $meeting_date,
