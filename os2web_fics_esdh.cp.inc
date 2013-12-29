@@ -92,6 +92,38 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
           $file->status = FILE_STATUS_PERMANENT;
           $file = file_save($file);
 
+          // Try to set media browser folder field if the media_browser_plus module is enabled.
+          if (module_exists('media_browser_plus')) {
+            $root = media_browser_plus_get_media_root_folder();
+            $path_items = explode('/', file_uri_target($file_destination_uri));
+            array_pop($path_items);
+            if (!empty($path_items)) {
+              $parent_id = $root->tid;
+              foreach ($path_items as $term_name) {
+                if ($terms = taxonomy_get_term_by_name($term_name, 'media_folders')) {
+                  foreach ($terms as $term) {
+                    $found = FALSE;
+                    $term_parent = taxonomy_get_parents($term->tid);
+                    $term_parent_id = key($term_parent);
+                    if ($term_parent_id == $parent_id) {
+                      $found = TRUE;
+                      $parent_id = $term->tid;
+                    }
+                  }
+                  if (!$found) {
+                    break;
+                  }
+                }
+                else {
+                  break;
+                }
+              }
+              if ($found) {
+                $file->field_folder[LANGUAGE_NONE][0]['tid'] = $term->tid;
+              }
+            }
+          }
+
           // Moving file final destination
           file_move($file, $file_destination_uri, FILE_EXISTS_REPLACE);
         }
