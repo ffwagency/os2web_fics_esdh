@@ -80,6 +80,14 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
             ->condition('uri', $file_destination_uri)
             ->execute()->fetchField();
 
+          // Trying to find the file on source uri instead
+          if (empty($file_id)) {
+            $file_id = db_select('file_managed', 'fm')
+              ->fields('fm', array('fid'))
+              ->condition('uri', $file_source_uri)
+              ->execute()->fetchField();
+          }
+
           $file = new stdClass();
           if ($file_id) {
             $file->fid = $file_id;
