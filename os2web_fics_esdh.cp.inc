@@ -134,9 +134,11 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
       $document_node->title = 'Dokument-' . $document_number . ' - ' . $document_title . ' (' . $record_number . ')';
       $document_node->field_os2web_case_document_id[LANGUAGE_NONE][0]['value'] = $document_number;
       $document_node->field_os2web_case_document_name[LANGUAGE_NONE][0]['value'] = $document_title;
-      $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['value'] = $document_date;
-      $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['timezone'] = 'Europe/Berlin';
-      $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['date_type'] = 'datetime';
+      if (!empty($document_date)) {
+        $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['value'] = $document_date;
+        $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['timezone'] = 'Europe/Berlin';
+        $document_node->field_os2web_case_document_date[LANGUAGE_NONE][0]['date_type'] = 'datetime';
+      }
       if (isset($file) && is_object($file)) {
         $document_node->field_os2web_case_document_file[LANGUAGE_NONE][] = (array) $file;
       }
