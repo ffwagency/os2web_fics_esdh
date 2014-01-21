@@ -31,6 +31,10 @@ function os2web_fics_esdh_mm_test($stuff) {
  *   List of URIs
  */
 function os2web_fics_esdh_mm_get_import_list() {
+  $args = func_get_args();
+  $force = array_shift($args);
+  $focus = array_shift($args);
+
   /*
    * Protecting XML files in the import folder.
    */
@@ -44,10 +48,15 @@ function os2web_fics_esdh_mm_get_import_list() {
    * We will enumerate the list with the publication-id
    * as parsed from the dir name of the manifest.
    */
+  $last_import = variable_get('os2web_esdh_provider_last_import', 0);
   $uris = array();
   foreach (file_scan_directory(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), '/\.xml$/i', array('recurse' => TRUE)) as $xml_file) {
-    $uris[] = array('id' => dirname($xml_file->uri), 'uri' => $xml_file->uri);
+    $meeting_id = substr($xml_file->name, 4);
+    if (!$last_import || filemtime($xml_file->uri) > $last_import || $force || ($focus && in_array($meeting_id, $focus))) {
+      $uris[] = array('id' => dirname($xml_file->uri), 'uri' => $xml_file->uri);
+    }
   }
+
   return $uris;
 }
 
