@@ -233,6 +233,8 @@ function _os2web_fics_esdh_mm_import_meeting_agenda_item($meeting, $xml) {
     // Process attachments.
     foreach ($xml->CaseAttachments->Attachment as $attachment) {
       $attachment_item['filename'] = (string) $attachment->AttachmentFilename;
+      // Linux don't like camel case in file names
+      $attachment_item['filename'] = preg_replace('/\.\w+$/e', 'strtolower("$0")', $attachment_item['filename']);
       $attachment_item['access'] = ((string) $attachment->AttachmentClosed == 'false') ? MM_OPEN_STRING : MM_CLOSED_STRING;
       $file_uri_parts = array(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']));
       $file_uri = implode('/', $file_uri_parts);
