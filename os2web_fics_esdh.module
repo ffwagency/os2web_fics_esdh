@@ -15,6 +15,8 @@ define('MM_DEFAULT_CLOSED_BULLET_HANDLING', 'partly_import');
 define('MM_CLOSED_STRING', 'Lukket');
 define('MM_OPEN_STRING', 'Åben');
 define('MM_BPA_BODY_FORMAT', 'os2web_fics_esdh');
+define('MM_USE_ALTERNATIVE_FILE_URI_SCHEME', TRUE);
+define('MN_DISABLE_PATHAUTO', TRUE);
 
 // This constant / variable should only be set to true in development
 // environments! XML files can contain information that should not be
