@@ -96,7 +96,12 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
       // Collecting agenda data
       $committee_id = (int) $manifest->BasisData->CommitteeID;
       $committee_name = (string) $manifest->BasisData->CommitteeName;
-      $meeting_date = (string) $manifest->Publish->MeetingDate . ' ' . $manifest->Publish->MeetingBegin;
+
+      //Validate the meeting time and fallback to default value if it fails.
+      $meeting_time = preg_match("/^(([0-1]?[0-9])|([2][0-3])):([0-5]?[0-9])(:([0-5]?[0-9]))?$/",
+        $manifest->Publish->MeetingDate) ? $manifest->Publish->MeetingDate : '00:00:00';
+
+      $meeting_date = (string) $meeting_time . ' ' . $manifest->Publish->MeetingBegin;
       $meeting_place =  (string)$manifest->Publish->MeetingPlace;
       $meeting_id = (int) $manifest->Publish->MeetingID;
       $meeting_state = '';
