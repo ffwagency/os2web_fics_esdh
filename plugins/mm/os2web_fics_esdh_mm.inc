@@ -99,9 +99,9 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
 
       //Validate the meeting time and fallback to default value if it fails.
       $meeting_time = preg_match("/^(([0-1]?[0-9])|([2][0-3])):([0-5]?[0-9])(:([0-5]?[0-9]))?$/",
-        $manifest->Publish->MeetingDate) ? $manifest->Publish->MeetingDate : '00:00:00';
+        $manifest->Publish->MeetingBegin) ? $manifest->Publish->MeetingBegin : '00:00:00';
 
-      $meeting_date = (string) $meeting_time . ' ' . $manifest->Publish->MeetingBegin;
+      $meeting_date = (string) $manifest->Publish->MeetingDate . ' ' . $meeting_time;
       $meeting_place =  (string)$manifest->Publish->MeetingPlace;
       $meeting_id = (int) $manifest->Publish->MeetingID;
       $meeting_state = '';
