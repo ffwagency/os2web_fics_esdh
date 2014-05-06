@@ -1,0 +1,37 @@
+<?php
+
+/**
+ *  Updating existing cases with a “Case title” field value.
+ */
+function os2web_fics_esdh_update_7101(&$sandbox) {
+  if (!isset($sandbox['progress'])) {
+    $case_nodes_count_query = db_select('node', 'n')
+      ->condition('n.type', 'os2web_case_publishing_case');
+    $case_nodes_count_query->addExpression('COUNT(n.nid)', 'count');
+
+    $sandbox['max'] = $case_nodes_count_query->execute()->fetchField() - 1;
+    $sandbox['current_nid'] = 0;
+    $sandbox['position'] = 0;
+  }
+
+  $nids = db_select('node', 'n')
+    ->condition('n.type', 'os2web_case_publishing_case')
+    ->condition('n.nid', $sandbox['current_nid'], '>')
+    ->fields('n', array('nid'))
+    ->orderBy('n.nid')
+    ->range(0, 3)
+    ->execute();
+
+  foreach ($nids as $n) {
+    $node = node_load($n->nid);
+    if (empty($node->field_os2web_case_case_title[LANGUAGE_NONE][0]['value'])) {
+      if (preg_match('/Sag\-[0-9]+ \- ([\s\S]+) \(/', $node->title, $match)) {
+        $node->field_os2web_case_case_title[LANGUAGE_NONE][0]['value'] = $match[1];
+        node_save($node);
+      }
+    }
+    $sandbox['progress']++;
+    $sandbox['current_nid'] = $n->nid;
+  }
+  $sandbox['#finished'] = empty($sandbox['max']) ? 1 : ($sandbox['progress'] / $sandbox['max']);
+}

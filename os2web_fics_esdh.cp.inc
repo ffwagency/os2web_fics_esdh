@@ -169,6 +169,7 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
       // Updating the case node object and saving the node.
       $case_node->published = 1;
       $case_node->title = 'Sag-' . $case_number . ' - ' . $case_title . ' (' . $record_number . ')';
+      $case_node->field_os2web_case_case_title[LANGUAGE_NONE][0]['value'] = $case_title;
       $case_node->field_os2web_case_case_id[LANGUAGE_NONE][0]['value'] = $case_number;
       $case_node->field_os2web_case_record_number[LANGUAGE_NONE][0]['value'] = $record_number;
       if (!_os2web_esdh_fics_cp_check_relation($case_node, $document_node->nid)) {
