@@ -25,7 +25,9 @@ function os2web_fics_esdh_mm_test($stuff) {
 }
 
 /**
- * Returns a list of meeting_ids for import. In our case a list of uri's of xml files.
+ * Returns a list of meeting_ids for import.
+ *
+ * In our case a list of uri's of xml files.
  *
  * @return array
  *   List of URIs
@@ -40,7 +42,7 @@ function os2web_fics_esdh_mm_get_import_list() {
    */
   _os2web_fics_esdh_mm_ensure_htaccess();
 
-  // Clearing variable with processed XML files
+  // Clearing variable with processed XML files.
   variable_set('os2web_fics_esdh_mm_processed_xml_files', array());
 
   /*
@@ -82,10 +84,10 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
     libxml_use_internal_errors(FALSE);
 
     if ($manifest === FALSE) {
-       error_log("Failed loading XML");
-       foreach(libxml_get_errors() as $error) {
-          error_log ($error->message);
-       }
+      error_log("Failed loading XML");
+      foreach (libxml_get_errors() as $error) {
+        error_log($error->message);
+      }
     }
 
     if (is_object($manifest)) {
@@ -93,23 +95,23 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
       // Setting the XML file to load - don't think we need this anymore.
       $directory_name = dirname(drupal_realpath($file));
 
-      // Collecting agenda data
+      // Collecting agenda data.
       $committee_id = (int) $manifest->BasisData->CommitteeID;
       $committee_name = (string) $manifest->BasisData->CommitteeName;
 
-      //Validate the meeting time and fallback to default value if it fails.
+      // Validate the meeting time and fallback to default value if it fails.
       $meeting_time = preg_match("/^(([0-1]?[0-9])|([2][0-3])):([0-5]?[0-9])(:([0-5]?[0-9]))?$/",
         $manifest->Publish->MeetingBegin) ? $manifest->Publish->MeetingBegin : '00:00:00';
 
       $meeting_date = (string) $manifest->Publish->MeetingDate . ' ' . $meeting_time;
-      $meeting_place =  (string)$manifest->Publish->MeetingPlace;
+      $meeting_place = (string) $manifest->Publish->MeetingPlace;
       $meeting_id = (int) $manifest->Publish->MeetingID;
       $meeting_state = '';
       $meeting_type = $manifest->Publish->Summary;
 
-      // Collecting agenda items
+      // Collecting agenda items.
       $meeting_agendas = $manifest->Publish->MetaData->Items;
-      
+
       // Check if the committee is allowed to publish.
       $publish_committee = array_map('trim', explode(',', variable_get('os2web_fics_esdh_approved_committees', MM_DEFAULT_APPROVED)));
       if ($committee_name == '' || !in_array($committee_id, $publish_committee)) {
@@ -123,8 +125,8 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
       $date->setTimezone(new DateTimeZone('UTC'));
       $meeting_date = $date->format('Y-m-d H:i');
 
-      // Changing the meeting state to match ESDH Provider module
-      if($meeting_type == 'false') {
+      // Changing the meeting state to match ESDH Provider module.
+      if ($meeting_type == 'false') {
         $meeting_type = "Dagsorden";
       }
       else {
@@ -139,7 +141,7 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
         'committee' => array(
           'esdh_name' => $committee_name,
           'esdh_id' => $committee_id,
-          'esdh_id_field' => 'field_os2web_meetings_commiteeid'
+          'esdh_id_field' => 'field_os2web_meetings_commiteeid',
         ),
         'location' => $meeting_place,
         'title' => $committee_name . ': ' . $title_date,
@@ -148,13 +150,13 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
         'meeting_state' => $meeting_state,
       );
 
-      // Error logging to watchdog if the agenda item list is empty
+      // Error logging to watchdog if the agenda item list is empty.
       if (empty($meeting_agendas)) {
         watchdog('FICS MM', 'Empty list of import items in %file.', array('%file' => $file), WATCHDOG_WARNING);
       }
 
       foreach ($meeting_agendas as $meeting_agenda) {
-        // Importing each agenda item through the ESDH provider module
+        // Importing each agenda item through the ESDH provider module.
         $imported = _os2web_fics_esdh_mm_import_meeting_agenda($meeting, $meeting_agenda);
         if (is_array($imported)) {
           $imported['publish'] = TRUE;
@@ -163,7 +165,8 @@ function os2web_fics_esdh_mm_import_meeting($meeting) {
       }
     }
     else {
-      // Error logging to watchdog if the XML failde to parse. Check if all illegal characters are in the remove list. 
+      // Error logging to watchdog if the XML failde to parse. Check if all
+      // illegal characters are in the remove list.
       watchdog('FICS MM', 'Failed to parse XML in %file during import.', array('%file' => $file), WATCHDOG_WARNING);
     }
 
@@ -227,21 +230,24 @@ function _os2web_fics_esdh_mm_import_meeting_agenda_item($meeting, $xml) {
   // Deny closed content.
   if ($item['access'] === MM_OPEN_STRING) {
 
-    // Adding bullet title and content
+    // Adding bullet title and content.
     $bullet_content = (string) $xml->DocContent;
     $bullet_content = !empty($bullet_content) ? _os2web_fics_esdh_mm_extract_case_content($bullet_content) : t('No content');
     $item['bullets'][] = array(
       'title' => (string) $xml->DocTitle,
-      'body' => $bullet_content
+      'body' => $bullet_content,
     );
 
     // Process attachments.
     foreach ($xml->CaseAttachments->Attachment as $attachment) {
       $attachment_item['filename'] = (string) $attachment->AttachmentFilename;
-      // Linux don't like camel case in file names
+      // Linux don't like camel case in file names.
       $attachment_item['filename'] = preg_replace('/\.\w+$/e', 'strtolower("$0")', $attachment_item['filename']);
       $attachment_item['access'] = ((string) $attachment->AttachmentClosed == 'false') ? MM_OPEN_STRING : MM_CLOSED_STRING;
-      $file_uri_parts = array(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']));
+      $file_uri_parts = array(
+        variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR),
+        $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']),
+      );
       $file_uri = implode('/', $file_uri_parts);
       if (strlen($attachment_item['filename']) > 0 && file_exists($file_uri)) {
         if ($attachment_item['access'] == MM_OPEN_STRING) {
@@ -257,11 +263,14 @@ function _os2web_fics_esdh_mm_import_meeting_agenda_item($meeting, $xml) {
       }
     }
   }
-  else if (MM_DELETE_FILES_FOR_CLOSED) {
-    // Delete the attachments
+  elseif (MM_DELETE_FILES_FOR_CLOSED) {
+    // Delete the attachments.
     foreach ($xml->CaseAttachments->Attachment as $attachment) {
       $attachment_item['filename'] = (string) $attachment->AttachmentFilename;
-      $file_uri_parts = array(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']));
+      $file_uri_parts = array(
+        variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR),
+        $meeting['meeting_id'], str_replace('\\', '/', $attachment_item['filename']),
+      );
       $file_uri = implode('/', $file_uri_parts);
       _os2web_fics_esdh_mm_delete_attachments($file_uri, $meeting['meeting_id'] . '/' . $item['id']);
     }
@@ -311,7 +320,6 @@ function _os2web_fics_esdh_mm_post_import_process($drush = FALSE) {
 }
 
 /**
- *
  * Deleting the specified file from the file system and logging the
  * result in watchdog.
  *
@@ -347,7 +355,7 @@ function _os2web_fics_esdh_mm_ensure_htaccess() {
   else {
     $directory = rtrim($directory, '/\\');
   }
-  $htaccess_path =  $directory . '/.htaccess';
+  $htaccess_path = $directory . '/.htaccess';
 
   if (file_exists($htaccess_path)) {
     // Short circuit if the .htaccess file already exists.
