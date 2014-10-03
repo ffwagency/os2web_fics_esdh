@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Settings for os2web_fics_esdh
+ */
 
 /**
  * Implements hook_form_alter().
@@ -29,7 +33,7 @@ function os2web_fics_esdh_form_os2web_settings_settings_form_alter(&$form, &$for
   );
 
   if (os2web_fics_esdh_cp_enabled()) {
-    // Case publishing configuration
+    // Case publishing configuration.
     $form['cp'] = array(
       '#type' => 'fieldset',
       '#title' => t('Cases publishing import'),

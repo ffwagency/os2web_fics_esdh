@@ -97,7 +97,7 @@ function os2web_fics_esdh_node_delete($node) {
       }
     }
   }
-  else if ($node->type == 'os2web_case_publishing_document') {
+  elseif ($node->type == 'os2web_case_publishing_document') {
     if (!empty($node->field_os2web_case_document_file[LANGUAGE_NONE][0]['fid'])) {
       $file = file_load($node->field_os2web_case_document_file[LANGUAGE_NONE][0]['fid']);
       if (is_object($file)) {

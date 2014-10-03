@@ -37,7 +37,7 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
 
     if ($manifest === FALSE) {
       error_log("Failed loading XML");
-      foreach(libxml_get_errors() as $error) {
+      foreach (libxml_get_errors() as $error) {
         error_log($error->message);
       }
     }
@@ -52,13 +52,13 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
       $document_file = (string) $manifest->dokref;
       $document_file = substr($document_file, strrpos($document_file, "\\") + 1);
 
-      // Checking if the document already exists in Drupal
+      // Checking if the document already exists in Drupal.
       if ($document_nid = _os2web_esdh_fics_cp_check_document($document_number)) {
-        // Loading existing document node
+        // Loading existing document node.
         $document_node = node_load($document_nid, NULL, TRUE);
       }
       else {
-        // Creating new node object
+        // Creating new node object.
         $document_node = new stdClass();
         $document_node->type = "os2web_case_publishing_document";
         $document_node->language = LANGUAGE_NONE;
@@ -66,21 +66,21 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
         node_object_prepare($document_node);
       }
 
-      // Saving file
+      // Saving file.
       if (!empty($document_file)) {
         $file_source_uri = variable_get('os2web_fics_esdh_cp_path', CP_IMPORT_DIR);
         $file_source_uri .= '/' . $document_file;
         $file_destination_uri = variable_get('os2web_fics_esdh_cp_destination_path', CP_DESTINATION_DIR);
         $file_destination_uri .= '/' . $document_file;
 
-        // Saving file if it exists
+        // Saving file if it exists.
         if (file_exists($file_source_uri)) {
           $file_id = db_select('file_managed', 'fm')
             ->fields('fm', array('fid'))
             ->condition('uri', $file_destination_uri)
             ->execute()->fetchField();
 
-          // Trying to find the file on source uri instead
+          // Trying to find the file on source uri instead.
           if (empty($file_id)) {
             $file_id = db_select('file_managed', 'fm')
               ->fields('fm', array('fid'))
@@ -100,7 +100,8 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
           $file->status = FILE_STATUS_PERMANENT;
           $file = file_save($file);
 
-          // Try to set media browser folder field if the media_browser_plus module is enabled.
+          // Try to set media browser folder field if the media_browser_plus
+          // module is enabled.
           if (module_exists('media_browser_plus')) {
             $root = media_browser_plus_get_media_root_folder();
             $path_items = explode('/', file_uri_target($file_destination_uri));
@@ -132,7 +133,7 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
             }
           }
 
-          // Moving file final destination
+          // Moving file final destination.
           file_move($file, $file_destination_uri, FILE_EXISTS_REPLACE);
         }
       }
@@ -152,13 +153,13 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
       }
       node_save($document_node);
 
-      // Checking if the case already exists in Drupal
+      // Checking if the case already exists in Drupal.
       if ($case_nid = _os2web_esdh_fics_cp_check_case($case_number)) {
-        // Loading existing case node
+        // Loading existing case node.
         $case_node = node_load($case_nid, NULL, TRUE);
       }
       else {
-        // Creating new node object
+        // Creating new node object.
         $case_node = new stdClass();
         $case_node->type = "os2web_case_publishing_case";
         $case_node->language = LANGUAGE_NONE;
@@ -184,7 +185,7 @@ function _os2web_esdh_fics_cp_import_document($xml_file) {
       }
       node_save($case_node);
 
-      // Delete XML file
+      // Delete XML file.
       if (!CP_KEEP_XML_FILES) {
         file_unmanaged_delete($xml_file);
       }
