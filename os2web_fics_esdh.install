@@ -35,3 +35,59 @@ function os2web_fics_esdh_update_7101(&$sandbox) {
   }
   $sandbox['#finished'] = empty($sandbox['max']) ? 1 : ($sandbox['progress'] / $sandbox['max']);
 }
+
+
+/**
+ * Updating meetings(images import).
+ */
+function os2web_fics_esdh_update_7102(&$sandbox) {
+  include_once drupal_get_path('module', 'os2web_fics_esdh') . '/plugins/mm/os2web_fics_esdh_mm.inc';
+
+  if (!isset($sandbox['progress'])) {
+    $meetings_nodes_count_query = db_select('node', 'n')
+      ->condition('n.type', 'os2web_meetings_meeting');
+    $meetings_nodes_count_query->addExpression('COUNT(n.nid)', 'count');
+
+    $sandbox['max'] = $meetings_nodes_count_query->execute()->fetchField() - 1;
+    $sandbox['current_nid'] = 0;
+    $sandbox['position'] = 0;
+  }
+
+  $nids = db_select('node', 'n')
+    ->condition('n.type', 'os2web_meetings_meeting')
+    ->condition('n.nid', $sandbox['current_nid'], '>')
+    ->fields('n', array('nid'))
+    ->orderBy('n.nid')
+    ->range(0, 3)
+    ->execute();
+
+  foreach ($nids as $n) {
+    $node = node_load($n->nid);
+    $meeting_id = $node->field_os2web_meetings_id[LANGUAGE_NONE][0]['value'];
+
+    $bullet_points = field_get_items('node', $node, 'field_os2web_meetings_bullets');
+    if (is_array($bullet_points)) {
+      foreach ($bullet_points as $bullet_point) {
+        $bullet_point_node = node_load($bullet_point['target_id']);
+        if ($bullet_point_node) {
+          $attachments = field_get_items('node', $bullet_point_node, 'field_os2web_meetings_attach');
+          if (is_array($attachments)) {
+            foreach ($attachments as $attachment) {
+              $attachment_node = node_load($attachment['target_id']);
+              $body = field_get_items('node', $attachment_node, 'field_os2web_meetings_bpa_body');
+              $body = $body[0]['value'];
+              $modified_body = _os2web_fics_esdh_mm_handle_images($meeting_id, $body);
+              if ($attachment_node->field_os2web_meetings_searchdata[LANGUAGE_NONE][0]['value'] != $modified_body) {
+                $attachment_node->field_os2web_meetings_searchdata[LANGUAGE_NONE][0]['value'] = $modified_body;
+                node_save($attachment_node);
+              }
+            }
+          }
+        }
+      }
+    }
+    $sandbox['progress']++;
+    $sandbox['current_nid'] = $n->nid;
+  }
+  $sandbox['#finished'] = empty($sandbox['max']) ? 1 : ($sandbox['progress'] / $sandbox['max']);
+}

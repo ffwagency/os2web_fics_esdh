@@ -53,10 +53,7 @@ function os2web_fics_esdh_mm_get_import_list() {
   $last_import = variable_get('os2web_esdh_provider_last_import', 0);
   $uris = array();
   foreach (file_scan_directory(variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR), '/\.xml$/i', array('recurse' => TRUE)) as $xml_file) {
-    $meeting_id = substr($xml_file->name, 4);
-    if (!$last_import || filemtime($xml_file->uri) > $last_import || $force || ($focus && in_array($meeting_id, $focus))) {
-      $uris[] = array('id' => dirname($xml_file->uri), 'uri' => $xml_file->uri);
-    }
+    $uris[] = array('id' => dirname($xml_file->uri), 'uri' => $xml_file->uri);
   }
 
   return $uris;
@@ -235,7 +232,7 @@ function _os2web_fics_esdh_mm_import_meeting_agenda_item($meeting, $xml) {
     $bullet_content = !empty($bullet_content) ? _os2web_fics_esdh_mm_extract_case_content($bullet_content) : t('No content');
     $item['bullets'][] = array(
       'title' => (string) $xml->DocTitle,
-      'body' => $bullet_content,
+      'body' => _os2web_fics_esdh_mm_handle_images($meeting['system_id'], $bullet_content),
     );
 
     // Process attachments.
@@ -293,6 +290,58 @@ function _os2web_fics_esdh_mm_extract_case_content($content) {
   $html = base64_decode($content);
   preg_match('/(?:<body[^>]*>)(.*)<\/body>/isU', $html, $matches);
   return $matches[1];
+}
+
+/**
+ * Import pictures included in body of bullet point.
+ *
+ * @param int $meeting_id
+ *   Meeting id.
+ * @param string $content
+ *   Bullet point content.
+ *
+ * @return string
+ *   Bullet point content with corrected paths to images.
+ */
+function _os2web_fics_esdh_mm_handle_images($meeting_id, $content){
+  $dom = new DOMDocument;
+  $dom->loadHTML($content);
+  // Get all img tags from bullet point.
+  $images = $dom->getElementsByTagName('img');
+  foreach($images as $image){
+    /**
+     * @var $image DOMElement
+     */
+    $src = $image->getAttribute('src');
+    if (strpos($src, 'sites/default/files') == FALSE) {
+      $image_uri = variable_get('os2web_fics_esdh_mm_path', MM_IMPORT_DIR) . "/$meeting_id/$src";
+
+      // Saving file if it exists.
+      if (file_exists($image_uri)) {
+        $file_id = db_select('file_managed', 'fm')
+          ->fields('fm', array('fid'))
+          ->condition('uri', $image_uri)
+          ->execute()->fetchField();
+
+        $file = new stdClass();
+        if ($file_id) {
+          $file->fid = $file_id;
+        }
+        $file->uri = $image_uri;
+        $file->display = 1;
+        $file->filename = $meeting_id . '-' . drupal_basename($file->uri);
+        $file->filemime = file_get_mimetype($file->uri);
+        $file->uid = 1;
+        $file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+
+        // Rewrite the img tags inside bulletpoints to the new picture URL.
+        $image->setAttribute('src', file_create_url($image_uri));
+      }
+    }
+  }
+
+  return $dom->saveHTML();
 }
 
 /**
